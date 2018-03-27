@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27428.2015
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "1 - BunnyHop", "1 - BunnyHop\1 - BunnyHop.vcxproj", "{FD077B50-D83C-45AD-AE97-2FFD88B82415}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2 - TriggerBot", "2 - TriggerBot\2 - TriggerBot.vcxproj", "{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{FD077B50-D83C-45AD-AE97-2FFD88B82415}.Release|x64.Build.0 = Release|x64
 		{FD077B50-D83C-45AD-AE97-2FFD88B82415}.Release|x86.ActiveCfg = Release|Win32
 		{FD077B50-D83C-45AD-AE97-2FFD88B82415}.Release|x86.Build.0 = Release|Win32
+		{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}.Debug|x64.ActiveCfg = Debug|x64
+		{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}.Debug|x64.Build.0 = Debug|x64
+		{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}.Debug|x86.ActiveCfg = Debug|Win32
+		{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}.Debug|x86.Build.0 = Debug|Win32
+		{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}.Release|x64.ActiveCfg = Release|x64
+		{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}.Release|x64.Build.0 = Release|x64
+		{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}.Release|x86.ActiveCfg = Release|Win32
+		{3EF9ACEE-90DC-4F9D-9D76-966C0B9EF1B4}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -19,7 +19,7 @@ The path to follow might change at some points.
 	- [ ] Freeze Health
 	- [ ] Freeze Ammo
 	- [x] Bunnyhop
-	- [ ] TriggerBot
+	- [x] TriggerBot
 	- [ ] Aimbot
 	- [ ] AOB Scan
 - [ ] ReClass
