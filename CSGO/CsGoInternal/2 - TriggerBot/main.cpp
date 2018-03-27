@@ -1,65 +1,77 @@
 #include <Windows.h>
 
-DWORD dwClientStateAddress = 0x57D894;
-DWORD dwEntityListAddress = 0x4A80244;
-DWORD dwPlayerBaseAddress = 0xAA3154;
-DWORD dwForceAttackAddress = 0x2EC2600;
+DWORD dwClientStateObjectAddress = 0x57D894;
+DWORD dwClientStateOffset = 0x108;
+DWORD dwEntityListOffset = 0x4A80244;
+DWORD dwPlayerBaseOffset = 0xAA3154;
+DWORD dwForceAttackOffset = 0x2EC2600;
 
-DWORD dwClientStateStateOffset = 0x108;
-DWORD dwMaxPlayerOffset = 0x310;
-DWORD dwTeamOffset = 0xF0;
-DWORD dwCrossHairOffset = 0xB2A4;
-DWORD dwEntityLoopDistance = 0x10;
-
-HMODULE hClientModule = NULL;
-HMODULE hEngineModule = NULL;
-
-DWORD* dwEntityList = NULL;
-DWORD* dwPlayerBase = NULL;
+DWORD dwClientModule = NULL;
+DWORD dwEngineModule = NULL;
 DWORD* dwClientState = NULL;
-DWORD* dwClientStateState = NULL;
 DWORD* dwForceAttack = NULL;
 
-int iMaxPlayers = 32;
+int inGame = 6;
+bool isTriggerOn = false;
 
-bool isActive = false;
+struct PlayerEntity_t {
+	DWORD dwPlayerEntity;
+	int iTeam;
+	int iHealth;
+	int crosshairEntityId;
 
-DWORD WINAPI Main_Thread(LPVOID lParam) {
-	do {
-		hClientModule = GetModuleHandleA("client.dll");
-		hEngineModule = GetModuleHandleA("engine.dll");
-	} while (hClientModule == NULL && hEngineModule == NULL);
+	void ReadInfo() {
+		dwPlayerEntity = *(DWORD*)(dwClientModule + dwPlayerBaseOffset);
+		iTeam = *(int*)(dwPlayerEntity + 0xF0);
+		iHealth = *(int*)(dwPlayerEntity + 0xFC);
+		crosshairEntityId = *(int*)(dwPlayerEntity + 0xB2A4);
+	}
+}Player;
 
-	dwClientState = (DWORD*)((DWORD)hEngineModule + dwClientStateAddress);
-	dwClientStateState = (DWORD*)(*dwClientState + dwClientStateStateOffset);
-	dwForceAttack = (DWORD*)((DWORD)hClientModule + dwForceAttackAddress);
+struct Entity_t {
+	DWORD dwEntity;
+	int iTeam;
+	int iHealth;
 
-	while (true) {
-		if (GetAsyncKeyState(VK_INSERT) & 1)
-			isActive = !isActive;
+	void ReadInfo(int entityIndex) {
+		dwEntity = *(DWORD*)(dwClientModule + dwEntityListOffset + ((entityIndex - 1) * 0x10));
+		iTeam = *(int*)(dwEntity + 0xF0);
+		iHealth = *(int*)(dwEntity + 0xFC);
+	}
+}Entity;
 
-		if (isActive && *dwClientStateState == 6) {
-			if (*dwForceAttack == 5)
+void Triggerbot() {
+	if (GetAsyncKeyState(VK_INSERT) & 1)
+		isTriggerOn = !isTriggerOn;
+
+	if (isTriggerOn && *dwClientState == inGame) {
+		Player.ReadInfo();
+
+		if (Player.crosshairEntityId > 0 && Player.crosshairEntityId < 32) {
+			Entity.ReadInfo(Player.crosshairEntityId);
+
+			if (Player.iTeam != Entity.iTeam) {
+				*dwForceAttack = 5;
+				Sleep(25);
 				*dwForceAttack = 4;
-
-			dwEntityList = (DWORD*)((DWORD)hClientModule + dwEntityListAddress);
-			dwPlayerBase = (DWORD*)((DWORD)hClientModule + dwPlayerBaseAddress);
-			iMaxPlayers = *(int*)(dwClientState + dwMaxPlayerOffset);
-
-			int playerTeam = *(int*)(*dwPlayerBase + dwTeamOffset);
-			int crosshairEntityId = *(int*)(*dwPlayerBase + dwCrossHairOffset);
-
-			if (crosshairEntityId != 0 && crosshairEntityId < iMaxPlayers) {
-				DWORD crosshairEntity = *(DWORD*)((DWORD)dwEntityList + ((crosshairEntityId - 1) * dwEntityLoopDistance));
-				if (crosshairEntity != NULL) {
-					int crosshairEntityTeam = *(int*)(crosshairEntity + dwTeamOffset);
-
-					if (playerTeam != crosshairEntityTeam && *dwForceAttack == 4)
-						*dwForceAttack = 5;
-				}
+				Sleep(25);
 			}
 		}
 	}
+}
+
+DWORD WINAPI Main_Thread(LPVOID lParam) {
+	do {
+		dwClientModule = (DWORD)GetModuleHandleA("client.dll");
+		dwEngineModule = (DWORD)GetModuleHandleA("engine.dll");
+	} while (dwClientModule == NULL && dwEngineModule == NULL);
+
+	DWORD dwClientStateObject = *(DWORD*)(dwEngineModule + dwClientStateObjectAddress);
+	dwClientState = (DWORD*)(dwClientStateObject + dwClientStateOffset);
+	dwForceAttack = (DWORD*)(dwClientModule + dwForceAttackOffset);
+
+	while (!GetAsyncKeyState(VK_ESCAPE))
+		Triggerbot();
 
 	return S_OK;
 }
