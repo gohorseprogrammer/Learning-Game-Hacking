@@ -11,7 +11,7 @@ The path to follow might change at some points.
 - [x] Hardware Basics
 - [ ] Simple Trainers (External)
 	- [x] Freeze Health
-	- [ ] Freeze Ammo
+	- [x] Freeze Ammo
 	- [ ] Bunnyhop
 	- [ ] TriggerBot
 	- [ ] Aimbot
