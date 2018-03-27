@@ -10,7 +10,7 @@ The path to follow might change at some points.
 - [x] C++
 - [x] Hardware Basics
 - [ ] Simple Trainers (External)
-	- [ ] Freeze Health
+	- [x] Freeze Health
 	- [ ] Freeze Ammo
 	- [ ] Bunnyhop
 	- [ ] TriggerBot
