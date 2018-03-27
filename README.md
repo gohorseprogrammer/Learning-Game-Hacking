@@ -12,7 +12,7 @@ The path to follow might change at some points.
 - [ ] Simple Trainers (External)
 	- [x] Freeze Health
 	- [x] Freeze Ammo
-	- [ ] Bunnyhop
+	- [x] Bunnyhop
 	- [ ] TriggerBot
 	- [ ] Aimbot
 - [ ] Internal
