@@ -9,10 +9,9 @@
 
 DWORD dwClientStateObjectAddress = 0x57D894;
 DWORD dwClientStateOffset = 0x108;
-DWORD dwClientStateMaxPlayerOffset = 0x310;
 
-DWORD dwEntityListOffset = 0x4A80244;
-DWORD dwPlayerBaseOffset = 0xAA3154;
+DWORD dwEntityListOffset = 0x4A8387C;
+DWORD dwPlayerBaseOffset = 0xAA6614;
 DWORD dwInGamePlayerNumOffset = 0x4A6F3A4;
 
 DWORD dwEntityOriginVect = 0x134;
@@ -22,7 +21,6 @@ DWORD dwEngineModule = NULL;
 DWORD dwServerModule = NULL;
 DWORD* dwClientStateObject = NULL;
 DWORD* dwClientState = NULL;
-int iInGamePlayersNum = NULL;
 
 int inGame = 6;
 bool isTriggerOn = false;
@@ -47,47 +45,41 @@ struct MyPlayer_t {
 		vecPosition = (Vector3_t*)(*dwPlayerBase + 0x134);
 		vecAimAngle = (Vector3_t*)(*dwClientStateObject + 0x4D10);
 	}
-}MyPlayer;
+};
+MyPlayer_t* MyPlayer = NULL;
 
 struct Entity_t {
-	MyPlayer_t* p_MyPlayer;
-	DWORD* dwEntityBase;
-	int* iHealth;
-	int* iTeam;
-	Vector3_t* vecPosition;
+	DWORD* dwEntityBase = NULL;
+	int* iHealth = NULL;
+	int* iTeam = NULL;
+	Vector3_t* vecPosition = NULL;
 	float fDistance;
-
-	void ReadInfo(int entityIndex) {
-		p_MyPlayer = &MyPlayer;
-		dwEntityBase = (DWORD*)(dwClientModule + dwEntityListOffset + entityIndex * 0x10);
-		iHealth = (int*)(*dwEntityBase + 0xFC);
-		iTeam = (int*)(*dwEntityBase + 0xF0);
-		vecPosition = (Vector3_t*)(*dwEntityBase + 0x134);
-	}
-
-	void Calc3dDistance() {
-		fDistance = sqrt(
-			pow(p_MyPlayer->vecPosition->x - vecPosition->x, 2) +
-			pow(p_MyPlayer->vecPosition->y - vecPosition->y, 2) +
-			pow(p_MyPlayer->vecPosition->z - vecPosition->z, 2)
-		);
-	}
 };
 
-Entity_t* Entities = NULL;
-Entity_t* GetClosestEnemy() {
-	Entity_t* closest = NULL;
+float Calc3dDistance(Vector3_t* src, Vector3_t* dst) {
+	return sqrt(
+		pow(src->x - dst->x, 2) +
+		pow(src->y - dst->y, 2) +
+		pow(src->z - dst->z, 2)
+	);
+}
+
+Entity_t GetClosestEnemy() {
+	Entity_t closest;
+	Entity_t tempEntity;
+	int iInGamePlayersNum = *(int*)(dwServerModule + 0x9E5880);
 
 	for (int i = 0; i < iInGamePlayersNum; i++) {
-		if (*Entities[i].iTeam != *MyPlayer.iTeam && *Entities[i].iHealth > 1) {
-			Entities[i].Calc3dDistance();
+		tempEntity.dwEntityBase = (DWORD*)(dwClientModule + dwEntityListOffset + i * 0x10);
+		tempEntity.iHealth = (int*)(*tempEntity.dwEntityBase + 0xFC);
+		tempEntity.iTeam = (int*)(*tempEntity.dwEntityBase + 0xF0);
+		tempEntity.vecPosition = (Vector3_t*)(*tempEntity.dwEntityBase + 0x134);
+
+		if (*tempEntity.iTeam != *MyPlayer->iTeam && *tempEntity.iHealth > 1) {
+			tempEntity.fDistance = Calc3dDistance(MyPlayer->vecPosition, tempEntity.vecPosition);
 			
-			if (closest == NULL) {
-				closest = &Entities[i];
-			} else {
-				if (Entities[i].fDistance < closest->fDistance)
-					closest = &Entities[i];
-			}
+			if (closest.dwEntityBase == NULL || tempEntity.fDistance < closest.fDistance)
+				closest = tempEntity;
 		}
 	}
 
@@ -112,21 +104,21 @@ void Aimbot() {
 		isTriggerOn = !isTriggerOn;
 
 	if (isTriggerOn && *dwClientState == inGame) {
-		iInGamePlayersNum = *(int*)(dwServerModule + 0x9E16F0);
-		MyPlayer.ReadInfo();
-
-		Entities = new Entity_t[iInGamePlayersNum];
-
-		for (int i = 0; i < iInGamePlayersNum; i++)
-			Entities[i].ReadInfo(i);
-
-		Entity_t* closestEnemy = GetClosestEnemy();
-		if (closestEnemy != NULL) {
- 			Vector3_t angles = CalculateAngle(MyPlayer.vecPosition, closestEnemy->vecPosition);
-			*MyPlayer.vecAimAngle = angles;
+		if (MyPlayer == NULL) {
+			MyPlayer = new MyPlayer_t;
+			MyPlayer->ReadInfo();
 		}
 
-		delete[] Entities;
+		Entity_t closestEnemy = GetClosestEnemy();
+		if (closestEnemy.dwEntityBase != NULL) {
+			Vector3_t angles = CalculateAngle(MyPlayer->vecPosition, closestEnemy.vecPosition);
+			*MyPlayer->vecAimAngle = angles;
+		}
+	} else {
+		if (MyPlayer != NULL) {
+			delete MyPlayer;
+			MyPlayer = NULL;
+		}
 	}
 }
 
