@@ -31,32 +31,66 @@ struct Vector3_t {
 	float z;
 };
 
-struct MyPlayer_t {
-	DWORD* dwPlayerBase;
-	int* iHealth;
-	int* iTeam;
-	Vector3_t* vecPosition;
-	Vector3_t* vecAimAngle;
-
-	void ReadInfo() {
-		dwPlayerBase = (DWORD*)(dwClientModule + dwPlayerBaseOffset);
-		iHealth = (int*)(*dwPlayerBase + 0xFC);
-		iTeam = (int*)(*dwPlayerBase + 0xF0);
-		vecPosition = (Vector3_t*)(*dwPlayerBase + 0x134);
-		vecAimAngle = (Vector3_t*)(*dwClientStateObject + 0x4D10);
-	}
+class MyPlayerClass {
+public:
+	char pad_0000[240]; //0x0000
+	int32_t iTeamNum; //0x00F0
+	char pad_00F4[8]; //0x00F4
+	int32_t iHealth; //0x00FC
+	char pad_0100[4]; //0x0100
+	Vector3_t vecView; //0x0104
+	char pad_0110[36]; //0x0110
+	Vector3_t vecPosition; //0x0134
 };
-MyPlayer_t* MyPlayer = NULL;
+MyPlayerClass* MyPlayer;
 
-struct Entity_t {
-	DWORD* dwEntityBase = NULL;
-	int* iHealth = NULL;
-	int* iTeam = NULL;
-	Vector3_t* vecPosition = NULL;
-	float fDistance;
+class BoneClass
+{
+public:
+	char pad_0000[12]; //0x0000
+	float x; //0x000C
+	char pad_0010[12]; //0x0010
+	float y; //0x001C
+	char pad_0020[12]; //0x0020
+	float z; //0x002C
+}; //Size: 0x0030
+
+class BoneList
+{
+public:
+	BoneClass Bone0[9]; //0x0000
+}; //Size: 0x01B0
+
+class EntityClass
+{
+public:
+	char pad_0000[240]; //0x0000
+	int32_t iTeamNum; //0x00F0
+	char pad_00F4[8]; //0x00F4
+	int32_t iHealth; //0x00FC
+	char pad_0100[4]; //0x0100
+	Vector3_t vecView; //0x0104
+	char pad_0110[36]; //0x0110
+	Vector3_t vecPosition; //0x0134
+	char pad_0140[9560]; //0x0140
+	BoneList* pBonesArray; //0x2698
+	char pad_269C[2676]; //0x269C
+}; //Size: 0x3110
+
+class EntityPaddingClass {
+public:
+	EntityClass* entity;
+	char pad[12]; //0x0004
 };
 
-float Calc3dDistance(Vector3_t* src, Vector3_t* dst) {
+class EntList {
+public:
+	EntityPaddingClass entities[20];
+};
+
+EntList* entList = NULL;
+
+float Calc3dDistance(const Vector3_t* src, const Vector3_t* dst) {
 	return sqrt(
 		pow(src->x - dst->x, 2) +
 		pow(src->y - dst->y, 2) +
@@ -64,37 +98,33 @@ float Calc3dDistance(Vector3_t* src, Vector3_t* dst) {
 	);
 }
 
-Entity_t GetClosestEnemy() {
-	Entity_t closest;
-	Entity_t tempEntity;
+EntityClass* GetClosestEnemy() {
+	EntityClass* closest = NULL;
+	float closestfDistance;
 	int iInGamePlayersNum = *(int*)(dwServerModule + 0x9E5880);
 
 	for (int i = 0; i < iInGamePlayersNum; i++) {
-		tempEntity.dwEntityBase = (DWORD*)(dwClientModule + dwEntityListOffset + i * 0x10);
-		tempEntity.iHealth = (int*)(*tempEntity.dwEntityBase + 0xFC);
-		tempEntity.iTeam = (int*)(*tempEntity.dwEntityBase + 0xF0);
-		tempEntity.vecPosition = (Vector3_t*)(*tempEntity.dwEntityBase + 0x134);
-
-		if (*tempEntity.iTeam != *MyPlayer->iTeam && *tempEntity.iHealth > 1) {
-			tempEntity.fDistance = Calc3dDistance(MyPlayer->vecPosition, tempEntity.vecPosition);
+		if (entList->entities[i].entity->iTeamNum != MyPlayer->iTeamNum && entList->entities[i].entity->iHealth > 1) {
+			float fDistance = Calc3dDistance(&MyPlayer->vecPosition, &entList->entities[i].entity->vecPosition);
 			
-			if (closest.dwEntityBase == NULL || tempEntity.fDistance < closest.fDistance)
-				closest = tempEntity;
+			if (closest == NULL || fDistance < closestfDistance) {
+				closestfDistance = fDistance;
+				closest = entList->entities[i].entity;
+			}
 		}
 	}
 
 	return closest;
 }
 
-Vector3_t CalculateAngle(Vector3_t* src, Vector3_t* dst) {
+Vector3_t CalculateAngle2(const Vector3_t* src, const BoneClass* dst) {
 	Vector3_t angles;
-	
-	Vector3_t delta = { (src->x - dst->x), (src->y - dst->y), (src->z - dst->z) };
-	float distance = sqrt(delta.x*delta.x + delta.y*delta.y + delta.z*delta.z);
+	Vector3_t e = { dst->x - src->x, dst->y - src->y, dst->z - src->z };
+	float eh = sqrt(e.x * e.x + e.y * e.y);
 
-	angles.x = -((atan2(dst->z - src->z, distance)) * 180.0f / PI);
-	angles.y = (-(float)atan2(dst->x - src->x, dst->y - src->y)) / PI * 180.0f + 90.0f; 
-	angles.z = 0.0f;
+	angles.x = atan2(-e.z, eh) * 180 / PI;
+	angles.y = atan2(e.y, e.x) * 180 / PI;
+	angles.z = 0;
 
 	return angles;
 }
@@ -104,25 +134,25 @@ void Aimbot() {
 		isTriggerOn = !isTriggerOn;
 
 	if (isTriggerOn && *dwClientState == inGame) {
-		if (MyPlayer == NULL) {
-			MyPlayer = new MyPlayer_t;
-			MyPlayer->ReadInfo();
-		}
+		if (MyPlayer == NULL)
+			MyPlayer = (MyPlayerClass*)(*(DWORD*)(dwClientModule + dwPlayerBaseOffset));
 
-		Entity_t closestEnemy = GetClosestEnemy();
-		if (closestEnemy.dwEntityBase != NULL) {
-			Vector3_t angles = CalculateAngle(MyPlayer->vecPosition, closestEnemy.vecPosition);
-			*MyPlayer->vecAimAngle = angles;
-		}
-	} else {
-		if (MyPlayer != NULL) {
-			delete MyPlayer;
-			MyPlayer = NULL;
+		if (entList == NULL)
+			entList = (EntList*)(dwClientModule + dwEntityListOffset);
+
+		EntityClass* closestEnemy = GetClosestEnemy();
+		if (closestEnemy != NULL) {
+			Vector3_t myPlayerViewPosition = { MyPlayer->vecPosition.x, MyPlayer->vecPosition.y, MyPlayer->vecPosition.z + MyPlayer->vecView.z };
+			Vector3_t* myPlayerViewAngles = (Vector3_t*)(*dwClientStateObject + 0x4D10);
+			*myPlayerViewAngles = CalculateAngle2(&myPlayerViewPosition, &closestEnemy->pBonesArray->Bone0[8]);
 		}
 	}
 }
 
 DWORD WINAPI Main_Thread(LPVOID lParam) {
+	AllocConsole();
+	freopen("CONOUT$", "w", stdout);
+
 	do {
 		dwClientModule = (DWORD)GetModuleHandleA("client.dll");
 		dwEngineModule = (DWORD)GetModuleHandleA("engine.dll");
