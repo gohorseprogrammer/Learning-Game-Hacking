@@ -64,7 +64,9 @@ public:
 class EntityClass
 {
 public:
-	char pad_0000[240]; //0x0000
+	char pad_0000[233]; //0x0000
+	bool bDormant; //0x00E9
+	char pad_00EA[6]; //0x00EA
 	int32_t iTeamNum; //0x00F0
 	char pad_00F4[8]; //0x00F4
 	int32_t iHealth; //0x00FC
@@ -87,7 +89,6 @@ class EntList {
 public:
 	EntityPaddingClass entities[20];
 };
-
 EntList* entList = NULL;
 
 float Calc3dDistance(const Vector3_t* src, const Vector3_t* dst) {
@@ -104,7 +105,7 @@ EntityClass* GetClosestEnemy() {
 	int iInGamePlayersNum = *(int*)(dwServerModule + 0x9E5880);
 
 	for (int i = 0; i < iInGamePlayersNum; i++) {
-		if (entList->entities[i].entity->iTeamNum != MyPlayer->iTeamNum && entList->entities[i].entity->iHealth > 1) {
+		if (entList->entities[i].entity->bDormant == false && entList->entities[i].entity->iTeamNum != MyPlayer->iTeamNum && entList->entities[i].entity->iHealth > 1) {
 			float fDistance = Calc3dDistance(&MyPlayer->vecPosition, &entList->entities[i].entity->vecPosition);
 			
 			if (closest == NULL || fDistance < closestfDistance) {
